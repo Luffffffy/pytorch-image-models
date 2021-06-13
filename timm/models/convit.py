@@ -39,7 +39,7 @@ def _cfg(url='', **kwargs):
     return {
         'url': url,
         'num_classes': 1000, 'input_size': (3, 224, 224), 'pool_size': None,
-        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
+        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD, 'fixed_input_size': True,
         'first_conv': 'patch_embed.proj', 'classifier': 'head',
         **kwargs
     }
@@ -73,7 +73,6 @@ class GPSA(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.pos_proj = nn.Linear(3, num_heads)
         self.proj_drop = nn.Dropout(proj_drop)
-        self.locality_strength = locality_strength
         self.gating_param = nn.Parameter(torch.ones(self.num_heads))
         self.rel_indices: torch.Tensor = torch.zeros(1, 1, 1, 3)  # silly torchscript hack, won't work with None
 
@@ -317,6 +316,9 @@ class ConViT(nn.Module):
 
 
 def _create_convit(variant, pretrained=False, **kwargs):
+    if kwargs.get('features_only', None):
+        raise RuntimeError('features_only not implemented for Vision Transformer models.')
+
     return build_model_with_cfg(
         ConViT, variant, pretrained,
         default_cfg=default_cfgs[variant],
