@@ -5,10 +5,14 @@ This optimizer code was adapted from the following (starting with latest)
 * https://github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/LanguageModeling/Transformer-XL/pytorch/lamb.py
 * https://github.com/cybertronai/pytorch-lamb
 
-Use FusedLamb if you can. The reason for including this variant of Lamb is to have a version that is
-similar in behaviour to APEX FusedLamb if you aren't using NVIDIA GPUs or cannot install APEX for whatever reason.
+Use FusedLamb if you can (GPU). The reason for including this variant of Lamb is to have a version that is
+similar in behaviour to APEX FusedLamb if you aren't using NVIDIA GPUs or cannot install/use APEX.
+
+In addition to some cleanup, this Lamb impl has been modified to support PyTorch XLA and has been tested on TPU.
 
 Original copyrights for above sources are below.
+
+Modifications Copyright 2021 Ross Wightman
 """
 # Copyright (c) 2021, Habana Labs Ltd.  All rights reserved.
 
@@ -47,20 +51,20 @@ Original copyrights for above sources are below.
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import math
 
 import torch
 from torch.optim import Optimizer
 
 
-class NvLamb(Optimizer):
+class Lamb(Optimizer):
     """Implements a pure pytorch variant of FuseLAMB (NvLamb variant) optimizer from apex.optimizers.FusedLAMB
     reference: https://github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/LanguageModeling/Transformer-XL/pytorch/lamb.py
 
     LAMB was proposed in `Large Batch Optimization for Deep Learning: Training BERT in 76 minutes`_.
 
     Arguments:
-        params (iterable): iterable of parameters to optimize or dicts defining
-            parameter groups.
+        params (iterable): iterable of parameters to optimize or dicts defining parameter groups.
         lr (float, optional): learning rate. (default: 1e-3)
         betas (Tuple[float, float], optional): coefficients used for computing
             running averages of gradient and its norm. (default: (0.9, 0.999))
@@ -69,11 +73,9 @@ class NvLamb(Optimizer):
         weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
         grad_averaging (bool, optional): whether apply (1-beta2) to grad when
             calculating running averages of gradient. (default: True)
-        set_grad_none (bool, optional): whether set grad to None when zero_grad()
-            method is called. (default: True)
-        max_grad_norm (float, optional): value used to clip global grad norm
-            (default: 1.0)
-        use_nvlamb (boolean, optional): Apply adaptive learning rate to 0.0
+        max_grad_norm (float, optional): value used to clip global grad norm (default: 1.0)
+        trust_clip (bool): enable LAMBC trust ratio clipping (default: False)
+        always_adapt (boolean, optional): Apply adaptive learning rate to 0.0
             weight decay parameter (default: False)
 
     .. _Large Batch Optimization for Deep Learning - Training BERT in 76 minutes:
@@ -82,64 +84,53 @@ class NvLamb(Optimizer):
         https://openreview.net/forum?id=ryQu7f-RZ
     """
 
-    def __init__(self, params, lr=1e-3, bias_correction=True,
-                 betas=(0.9, 0.999), eps=1e-6, weight_decay=0.01,
-                 grad_averaging=True, set_grad_none=True,
-                 max_grad_norm=1.0, use_nvlamb=False):
-        defaults = dict(lr=lr, bias_correction=bias_correction,
-                        betas=betas, eps=eps, weight_decay=weight_decay,
-                        grad_averaging=grad_averaging,
-                        max_grad_norm=max_grad_norm)
+    def __init__(
+            self, params, lr=1e-3, bias_correction=True, betas=(0.9, 0.999), eps=1e-6,
+            weight_decay=0.01, grad_averaging=True, max_grad_norm=1.0, trust_clip=False, always_adapt=False):
+        defaults = dict(
+            lr=lr, bias_correction=bias_correction, betas=betas, eps=eps, weight_decay=weight_decay,
+            grad_averaging=grad_averaging, max_grad_norm=max_grad_norm,
+            trust_clip=trust_clip, always_adapt=always_adapt)
         super().__init__(params, defaults)
-        self.set_grad_none = set_grad_none
-        self.use_nvlamb = use_nvlamb
 
-    def zero_grad(self):
-        if self.set_grad_none:
-            for group in self.param_groups:
-                for p in group['params']:
-                    p.grad = None
-        else:
-            super(NvLamb, self).zero_grad()
-
+    @torch.no_grad()
     def step(self, closure=None):
         """Performs a single optimization step.
         Arguments:
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
-        device = self.param_groups[0]["params"][0].device
-
         loss = None
         if closure is not None:
-            loss = closure()
+            with torch.enable_grad():
+                loss = closure()
 
+        device = self.param_groups[0]['params'][0].device
+        one_tensor = torch.tensor(1.0, device=device)  # because torch.where doesn't handle scalars correctly
         global_grad_norm = torch.zeros(1, device=device)
         for group in self.param_groups:
             for p in group['params']:
                 if p.grad is None:
                     continue
-                grad = p.grad.data
+                grad = p.grad
                 if grad.is_sparse:
                     raise RuntimeError('Lamb does not support sparse gradients, consider SparseAdam instad.')
                 global_grad_norm.add_(grad.pow(2).sum())
 
-        global_grad_norm_ = torch.sqrt(global_grad_norm)
-        max_grad_norm = self.defaults['max_grad_norm']
-
-        if global_grad_norm_ > max_grad_norm:
-            clip_global_grad_norm = global_grad_norm_ / max_grad_norm
-        else:
-            clip_global_grad_norm = 1.0
+        global_grad_norm = torch.sqrt(global_grad_norm)
+        # FIXME it'd be nice to remove explicit tensor conversion of scalars when torch.where promotes
+        # scalar types properly https://github.com/pytorch/pytorch/issues/9190
+        max_grad_norm = torch.tensor(self.defaults['max_grad_norm'], device=device)
+        clip_global_grad_norm = torch.where(
+            global_grad_norm > max_grad_norm,
+            global_grad_norm / max_grad_norm,
+            one_tensor)
 
         for group in self.param_groups:
             bias_correction = 1 if group['bias_correction'] else 0
             beta1, beta2 = group['betas']
             grad_averaging = 1 if group['grad_averaging'] else 0
-            if grad_averaging:
-                beta3 = 1 - beta1
-            else:
-                beta3 = 1.0
+            beta3 = 1 - beta1 if grad_averaging else 1.0
 
             # assume same step across group now to simplify things
             # per parameter step can be easily support by making it tensor, or pass list into kernel
@@ -147,8 +138,6 @@ class NvLamb(Optimizer):
                 group['step'] += 1
             else:
                 group['step'] = 1
-
-            step_size = group['lr']
 
             if bias_correction:
                 bias_correction1 = 1 - beta1 ** group['step']
@@ -159,46 +148,45 @@ class NvLamb(Optimizer):
             for p in group['params']:
                 if p.grad is None:
                     continue
-                grad = p.grad.data.div_(clip_global_grad_norm)
+                grad = p.grad.div_(clip_global_grad_norm)
                 state = self.state[p]
 
                 # State initialization
                 if len(state) == 0:
-                    # Exponential moving average of gradient values
-                    state['exp_avg'] = torch.zeros_like(p.data)
+                    # Exponential moving average of gradient valuesa
+                    state['exp_avg'] = torch.zeros_like(p)
                     # Exponential moving average of squared gradient values
-                    state['exp_avg_sq'] = torch.zeros_like(p.data)
+                    state['exp_avg_sq'] = torch.zeros_like(p)
 
-                exp_avg_, exp_avg_sq_ = state['exp_avg'], state['exp_avg_sq']
+                exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
 
                 # Decay the first and second moment running average coefficient
-                # m_t
-                exp_avg_.mul_(beta1).add_(grad, alpha=beta3)
-                # v_t
-                exp_avg_sq_.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
-                # create clones to avoid modifying runner stats
-                exp_avg = exp_avg_.div(bias_correction1)
-                exp_avg_sq = exp_avg_sq_.div(bias_correction2)
+                exp_avg.mul_(beta1).add_(grad, alpha=beta3)  # m_t
+                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)  # v_t
 
-                # || w_t ||
-                weight_norm = p.data.norm(2.0)
-                # u_t
-                exp_avg_sq_sqrt = torch.sqrt(exp_avg_sq)
-                adam_step = exp_avg.div_(exp_avg_sq_sqrt.add_(group['eps']))
-                if group['weight_decay'] != 0:
-                    adam_step.add_(p.data, alpha=group['weight_decay'])
-                # || u_t ||
-                adam_norm = adam_step.norm(2.0)
-                if (group['weight_decay'] != 0 or self.use_nvlamb) and adam_norm > 0 and weight_norm > 0:
-                    trust_ratio = weight_norm / adam_norm
-                    trust_ratio = trust_ratio.item()
-                else:
-                    trust_ratio = 1
+                denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(group['eps'])
+                update = (exp_avg / bias_correction1).div_(denom)
 
-                state['weight_norm'] = weight_norm
-                state['adam_norm'] = adam_norm
-                state['trust_ratio'] = trust_ratio
+                weight_decay = group['weight_decay']
+                if weight_decay != 0:
+                    update.add_(p, alpha=weight_decay)
 
-                p.data.add_(adam_step, alpha=-step_size * trust_ratio)
+                if weight_decay != 0 or group['always_adapt']:
+                    # Layer-wise LR adaptation. By default, skip adaptation on parameters that are
+                    # excluded from weight decay, unless always_adapt == True, then always enabled.
+                    w_norm = p.norm(2.0)
+                    g_norm = update.norm(2.0)
+                    # FIXME nested where required since logical and/or not working in PT XLA
+                    trust_ratio = torch.where(
+                        w_norm > 0,
+                        torch.where(g_norm > 0, w_norm / g_norm, one_tensor),
+                        one_tensor,
+                    )
+                    if group['trust_clip']:
+                        # LAMBC trust clipping, upper bound fixed at one
+                        trust_ratio = torch.minimum(trust_ratio, one_tensor)
+                    update.mul_(trust_ratio)
+
+                p.add_(update, alpha=-group['lr'])
 
         return loss
