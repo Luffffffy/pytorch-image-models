@@ -21,7 +21,7 @@ from contextlib import suppress
 
 from timm.models import create_model, apply_test_time_pool, load_checkpoint, is_model, list_models
 from timm.data import create_dataset, create_loader, resolve_data_config, RealLabelsImagenet
-from timm.utils import accuracy, AverageMeter, natural_key, setup_default_logging, set_jit_legacy
+from timm.utils import accuracy, AverageMeter, natural_key, setup_default_logging, set_jit_fuser
 
 has_apex = False
 try:
@@ -48,6 +48,8 @@ parser.add_argument('--dataset', '-d', metavar='NAME', default='',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
 parser.add_argument('--split', metavar='NAME', default='validation',
                     help='dataset split (default: validation)')
+parser.add_argument('--dataset-download', action='store_true', default=False,
+                    help='Allow download of dataset for torch/ and tfds/ datasets that support it.')
 parser.add_argument('--model', '-m', metavar='NAME', default='dpn92',
                     help='model architecture (default: dpn92)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -100,8 +102,8 @@ parser.add_argument('--use-ema', dest='use_ema', action='store_true',
                     help='use ema version of weights if present')
 parser.add_argument('--torchscript', dest='torchscript', action='store_true',
                     help='convert model torchscript for inference')
-parser.add_argument('--legacy-jit', dest='legacy_jit', action='store_true',
-                    help='use legacy jit mode for pytorch 1.5/1.5.1/1.6 to get back fusion performance')
+parser.add_argument('--fuser', default='', type=str,
+                    help="Select jit fuser. One of ('', 'te', 'old', 'nvfuser')")
 parser.add_argument('--results-file', default='', type=str, metavar='FILENAME',
                     help='Output csv file for validation results (summary)')
 parser.add_argument('--real-labels', default='', type=str, metavar='FILENAME',
@@ -131,8 +133,8 @@ def validate(args):
     else:
         _logger.info('Validating in float32. AMP not enabled.')
 
-    if args.legacy_jit:
-        set_jit_legacy()
+    if args.fuser:
+        set_jit_fuser(args.fuser)
 
     # create model
     model = create_model(
@@ -175,7 +177,7 @@ def validate(args):
 
     dataset = create_dataset(
         root=args.data, name=args.dataset, split=args.split,
-        load_bytes=args.tf_preprocessing, class_map=args.class_map)
+        download=args.dataset_download, load_bytes=args.tf_preprocessing, class_map=args.class_map)
 
     if args.valid_labels:
         with open(args.valid_labels, 'r') as f:
@@ -289,7 +291,7 @@ def main():
         if args.model == 'all':
             # validate all models in a list of names with pretrained checkpoints
             args.pretrained = True
-            model_names = list_models(pretrained=True, exclude_filters=['*_in21k', '*_in22k'])
+            model_names = list_models(pretrained=True, exclude_filters=['*_in21k', '*_in22k', '*_dino'])
             model_cfgs = [(n, '') for n in model_names]
         elif not is_model(args.model):
             # model name doesn't exist, try as wildcard filter
