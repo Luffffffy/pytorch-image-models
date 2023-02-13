@@ -14,18 +14,18 @@ Rest of code, ByobNet, and Transformer block hacked together by / Copyright 2022
 # Copyright (C) 2020 Apple Inc. All Rights Reserved.
 #
 import math
-from typing import Union, Callable, Dict, Tuple, Optional, Sequence
+from typing import Callable, Tuple, Optional
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
+from timm.layers import to_2tuple, make_divisible, GroupNorm1, ConvMlp, DropPath
+from ._builder import build_model_with_cfg
+from ._features_fx import register_notrace_module
+from ._registry import register_model
 from .byobnet import register_block, ByoBlockCfg, ByoModelCfg, ByobNet, LayerFn, num_groups
-from .fx_features import register_notrace_module
-from .layers import to_2tuple, make_divisible, LayerNorm2d, GroupNorm1, ConvMlp, DropPath
 from .vision_transformer import Block as TransformerBlock
-from .helpers import build_model_with_cfg
-from .registry import register_model
 
 __all__ = []
 
@@ -266,9 +266,16 @@ class MobileVitBlock(nn.Module):
 
         self.transformer = nn.Sequential(*[
             TransformerBlock(
-                transformer_dim, mlp_ratio=mlp_ratio, num_heads=num_heads, qkv_bias=True,
-                attn_drop=attn_drop, drop=drop, drop_path=drop_path_rate,
-                act_layer=layers.act, norm_layer=transformer_norm_layer)
+                transformer_dim,
+                mlp_ratio=mlp_ratio,
+                num_heads=num_heads,
+                qkv_bias=True,
+                attn_drop=attn_drop,
+                drop=drop,
+                drop_path=drop_path_rate,
+                act_layer=layers.act,
+                norm_layer=transformer_norm_layer,
+            )
             for _ in range(transformer_depth)
         ])
         self.norm = transformer_norm_layer(transformer_dim)

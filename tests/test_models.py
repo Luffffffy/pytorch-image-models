@@ -13,9 +13,8 @@ except ImportError:
     has_fx_feature_extraction = False
 
 import timm
-from timm import list_models, create_model, set_scriptable, has_pretrained_cfg_key, is_pretrained_cfg_key, \
-    get_pretrained_cfg_value
-from timm.models.fx_features import _leaf_modules, _autowrap_functions    
+from timm import list_models, create_model, set_scriptable, get_pretrained_cfg_value
+from timm.models._features_fx import _leaf_modules, _autowrap_functions
 
 if hasattr(torch._C, '_jit_set_profiling_executor'):
     # legacy executor is too slow to compile large models for unit tests
@@ -26,8 +25,10 @@ if hasattr(torch._C, '_jit_set_profiling_executor'):
 # transformer models don't support many of the spatial / feature based model functionalities
 NON_STD_FILTERS = [
     'vit_*', 'tnt_*', 'pit_*', 'swin_*', 'coat_*', 'cait_*', '*mixer_*', 'gmlp_*', 'resmlp_*', 'twins_*',
-    'convit_*', 'levit*', 'visformer*', 'deit*', 'jx_nest_*', 'nest_*', 'xcit_*', 'crossvit_*', 'beit_*',
-    'poolformer_*', 'volo_*', 'sequencer2d_*', 'swinv2_*']
+    'convit_*', 'levit*', 'visformer*', 'deit*', 'jx_nest_*', 'nest_*', 'xcit_*', 'crossvit_*', 'beit*',
+    'poolformer_*', 'volo_*', 'sequencer2d_*', 'swinv2_*', 'pvt_v2*', 'mvitv2*', 'gcvit*', 'efficientformer*',
+    'eva_*', 'flexivit*'
+]
 NUM_NON_STD = len(NON_STD_FILTERS)
 
 # exclude models that cause specific test failures
@@ -37,8 +38,8 @@ if 'GITHUB_ACTIONS' in os.environ:
         '*efficientnet_l2*', '*resnext101_32x48d', '*in21k', '*152x4_bitm', '*101x3_bitm', '*50x3_bitm',
         '*nfnet_f3*', '*nfnet_f4*', '*nfnet_f5*', '*nfnet_f6*', '*nfnet_f7*', '*efficientnetv2_xl*',
         '*resnetrs350*', '*resnetrs420*', 'xcit_large_24_p8*', 'vit_huge*', 'vit_gi*', 'swin*huge*',
-        'swin*giant*']
-    NON_STD_EXCLUDE_FILTERS = ['vit_huge*', 'vit_gi*', 'swin*giant*']
+        'swin*giant*', 'convnextv2_huge*', 'maxvit_xlarge*', 'davit_giant', 'davit_huge']
+    NON_STD_EXCLUDE_FILTERS = ['vit_huge*', 'vit_gi*', 'swin*giant*', 'eva_giant*']
 else:
     EXCLUDE_FILTERS = []
     NON_STD_EXCLUDE_FILTERS = ['vit_gi*']
@@ -52,7 +53,7 @@ MAX_JIT_SIZE = 320
 TARGET_FFEAT_SIZE = 96
 MAX_FFEAT_SIZE = 256
 TARGET_FWD_FX_SIZE = 128
-MAX_FWD_FX_SIZE = 224
+MAX_FWD_FX_SIZE = 256
 TARGET_BWD_FX_SIZE = 128
 MAX_BWD_FX_SIZE = 224
 
@@ -128,7 +129,7 @@ def test_model_backward(model_name, batch_size):
 
 
 @pytest.mark.timeout(300)
-@pytest.mark.parametrize('model_name', list_models(exclude_filters=NON_STD_FILTERS))
+@pytest.mark.parametrize('model_name', list_models(exclude_filters=NON_STD_FILTERS, include_tags=True))
 @pytest.mark.parametrize('batch_size', [1])
 def test_model_default_cfgs(model_name, batch_size):
     """Run a single forward pass with each model"""
@@ -190,7 +191,7 @@ def test_model_default_cfgs(model_name, batch_size):
 
 
 @pytest.mark.timeout(300)
-@pytest.mark.parametrize('model_name', list_models(filter=NON_STD_FILTERS, exclude_filters=NON_STD_EXCLUDE_FILTERS))
+@pytest.mark.parametrize('model_name', list_models(filter=NON_STD_FILTERS, exclude_filters=NON_STD_EXCLUDE_FILTERS, include_tags=True))
 @pytest.mark.parametrize('batch_size', [1])
 def test_model_default_cfgs_non_std(model_name, batch_size):
     """Run a single forward pass with each model"""
@@ -268,7 +269,7 @@ if 'GITHUB_ACTIONS' not in os.environ:
 
 EXCLUDE_JIT_FILTERS = [
     '*iabn*', 'tresnet*',  # models using inplace abn unlikely to ever be scriptable
-    'dla*', 'hrnet*', 'ghostnet*',  # hopefully fix at some point
+    'dla*', 'hrnet*', 'ghostnet*'  # hopefully fix at some point
     'vit_large_*', 'vit_huge_*', 'vit_gi*',
 ]
 
@@ -303,7 +304,7 @@ if 'GITHUB_ACTIONS' in os.environ:  # and 'Linux' in platform.system():
 
 
 @pytest.mark.timeout(120)
-@pytest.mark.parametrize('model_name', list_models(exclude_filters=EXCLUDE_FILTERS + EXCLUDE_FEAT_FILTERS))
+@pytest.mark.parametrize('model_name', list_models(exclude_filters=EXCLUDE_FILTERS + EXCLUDE_FEAT_FILTERS, include_tags=True))
 @pytest.mark.parametrize('batch_size', [1])
 def test_model_forward_features(model_name, batch_size):
     """Run a single forward pass with each model in feature extraction mode"""
