@@ -22,8 +22,7 @@ from ._efficientnet_builder import EfficientNetBuilder, decode_arch_def, efficie
     round_channels, resolve_bn_args, resolve_act_layer, BN_EPS_TF_DEFAULT
 from ._features import FeatureInfo, FeatureHooks
 from ._manipulate import checkpoint_seq
-from ._pretrained import generate_default_cfgs
-from ._registry import register_model
+from ._registry import generate_default_cfgs, register_model, register_model_deprecations
 
 __all__ = ['MobileNetV3', 'MobileNetV3Features']
 
@@ -145,13 +144,12 @@ class MobileNetV3(nn.Module):
         x = self.global_pool(x)
         x = self.conv_head(x)
         x = self.act2(x)
+        x = self.flatten(x)
         if pre_logits:
-            return x.flatten(1)
-        else:
-            x = self.flatten(x)
-            if self.drop_rate > 0.:
-                x = F.dropout(x, p=self.drop_rate, training=self.training)
-            return self.classifier(x)
+            return x
+        if self.drop_rate > 0.:
+            x = F.dropout(x, p=self.drop_rate, training=self.training)
+        return self.classifier(x)
 
     def forward(self, x):
         x = self.forward_features(x)
@@ -645,42 +643,42 @@ default_cfgs = generate_default_cfgs({
 
 
 @register_model
-def mobilenetv3_large_075(pretrained=False, **kwargs):
+def mobilenetv3_large_075(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     model = _gen_mobilenet_v3('mobilenetv3_large_075', 0.75, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def mobilenetv3_large_100(pretrained=False, **kwargs):
+def mobilenetv3_large_100(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     model = _gen_mobilenet_v3('mobilenetv3_large_100', 1.0, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def mobilenetv3_small_050(pretrained=False, **kwargs):
+def mobilenetv3_small_050(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     model = _gen_mobilenet_v3('mobilenetv3_small_050', 0.50, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def mobilenetv3_small_075(pretrained=False, **kwargs):
+def mobilenetv3_small_075(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     model = _gen_mobilenet_v3('mobilenetv3_small_075', 0.75, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def mobilenetv3_small_100(pretrained=False, **kwargs):
+def mobilenetv3_small_100(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     model = _gen_mobilenet_v3('mobilenetv3_small_100', 1.0, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def mobilenetv3_rw(pretrained=False, **kwargs):
+def mobilenetv3_rw(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     if pretrained:
         # pretrained model trained with non-default BN epsilon
@@ -690,7 +688,7 @@ def mobilenetv3_rw(pretrained=False, **kwargs):
 
 
 @register_model
-def tf_mobilenetv3_large_075(pretrained=False, **kwargs):
+def tf_mobilenetv3_large_075(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     kwargs['bn_eps'] = BN_EPS_TF_DEFAULT
     kwargs['pad_type'] = 'same'
@@ -699,7 +697,7 @@ def tf_mobilenetv3_large_075(pretrained=False, **kwargs):
 
 
 @register_model
-def tf_mobilenetv3_large_100(pretrained=False, **kwargs):
+def tf_mobilenetv3_large_100(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     kwargs['bn_eps'] = BN_EPS_TF_DEFAULT
     kwargs['pad_type'] = 'same'
@@ -708,7 +706,7 @@ def tf_mobilenetv3_large_100(pretrained=False, **kwargs):
 
 
 @register_model
-def tf_mobilenetv3_large_minimal_100(pretrained=False, **kwargs):
+def tf_mobilenetv3_large_minimal_100(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     kwargs['bn_eps'] = BN_EPS_TF_DEFAULT
     kwargs['pad_type'] = 'same'
@@ -717,7 +715,7 @@ def tf_mobilenetv3_large_minimal_100(pretrained=False, **kwargs):
 
 
 @register_model
-def tf_mobilenetv3_small_075(pretrained=False, **kwargs):
+def tf_mobilenetv3_small_075(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     kwargs['bn_eps'] = BN_EPS_TF_DEFAULT
     kwargs['pad_type'] = 'same'
@@ -726,7 +724,7 @@ def tf_mobilenetv3_small_075(pretrained=False, **kwargs):
 
 
 @register_model
-def tf_mobilenetv3_small_100(pretrained=False, **kwargs):
+def tf_mobilenetv3_small_100(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     kwargs['bn_eps'] = BN_EPS_TF_DEFAULT
     kwargs['pad_type'] = 'same'
@@ -735,7 +733,7 @@ def tf_mobilenetv3_small_100(pretrained=False, **kwargs):
 
 
 @register_model
-def tf_mobilenetv3_small_minimal_100(pretrained=False, **kwargs):
+def tf_mobilenetv3_small_minimal_100(pretrained=False, **kwargs) -> MobileNetV3:
     """ MobileNet V3 """
     kwargs['bn_eps'] = BN_EPS_TF_DEFAULT
     kwargs['pad_type'] = 'same'
@@ -744,56 +742,62 @@ def tf_mobilenetv3_small_minimal_100(pretrained=False, **kwargs):
 
 
 @register_model
-def fbnetv3_b(pretrained=False, **kwargs):
+def fbnetv3_b(pretrained=False, **kwargs) -> MobileNetV3:
     """ FBNetV3-B """
     model = _gen_fbnetv3('fbnetv3_b', pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def fbnetv3_d(pretrained=False, **kwargs):
+def fbnetv3_d(pretrained=False, **kwargs) -> MobileNetV3:
     """ FBNetV3-D """
     model = _gen_fbnetv3('fbnetv3_d', pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def fbnetv3_g(pretrained=False, **kwargs):
+def fbnetv3_g(pretrained=False, **kwargs) -> MobileNetV3:
     """ FBNetV3-G """
     model = _gen_fbnetv3('fbnetv3_g', pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def lcnet_035(pretrained=False, **kwargs):
+def lcnet_035(pretrained=False, **kwargs) -> MobileNetV3:
     """ PP-LCNet 0.35"""
     model = _gen_lcnet('lcnet_035', 0.35, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def lcnet_050(pretrained=False, **kwargs):
+def lcnet_050(pretrained=False, **kwargs) -> MobileNetV3:
     """ PP-LCNet 0.5"""
     model = _gen_lcnet('lcnet_050', 0.5, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def lcnet_075(pretrained=False, **kwargs):
+def lcnet_075(pretrained=False, **kwargs) -> MobileNetV3:
     """ PP-LCNet 1.0"""
     model = _gen_lcnet('lcnet_075', 0.75, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def lcnet_100(pretrained=False, **kwargs):
+def lcnet_100(pretrained=False, **kwargs) -> MobileNetV3:
     """ PP-LCNet 1.0"""
     model = _gen_lcnet('lcnet_100', 1.0, pretrained=pretrained, **kwargs)
     return model
 
 
 @register_model
-def lcnet_150(pretrained=False, **kwargs):
+def lcnet_150(pretrained=False, **kwargs) -> MobileNetV3:
     """ PP-LCNet 1.5"""
     model = _gen_lcnet('lcnet_150', 1.5, pretrained=pretrained, **kwargs)
     return model
+
+
+register_model_deprecations(__name__, {
+    'mobilenetv3_large_100_miil': 'mobilenetv3_large_100.miil_in21k_ft_in1k',
+    'mobilenetv3_large_100_miil_in21k': 'mobilenetv3_large_100.miil_in21k',
+})

@@ -37,135 +37,9 @@ from timm.layers import ClassifierHead, ConvNormAct, BatchNormAct2d, DropPath, A
     create_conv2d, get_act_layer, get_norm_act_layer, get_attn, make_divisible, to_2tuple, EvoNorm2dS0a
 from ._builder import build_model_with_cfg
 from ._manipulate import named_apply, checkpoint_seq
-from ._registry import register_model
+from ._registry import generate_default_cfgs, register_model
 
 __all__ = ['ByobNet', 'ByoModelCfg', 'ByoBlockCfg', 'create_byob_stem', 'create_block']
-
-
-def _cfg(url='', **kwargs):
-    return {
-        'url': url, 'num_classes': 1000, 'input_size': (3, 224, 224), 'pool_size': (7, 7),
-        'crop_pct': 0.875, 'interpolation': 'bilinear',
-        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
-        'first_conv': 'stem.conv', 'classifier': 'head.fc',
-        **kwargs
-    }
-
-
-def _cfgr(url='', **kwargs):
-    return {
-        'url': url, 'num_classes': 1000, 'input_size': (3, 256, 256), 'pool_size': (8, 8),
-        'crop_pct': 0.9, 'interpolation': 'bicubic',
-        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
-        'first_conv': 'stem.conv1.conv', 'classifier': 'head.fc',
-        **kwargs
-    }
-
-
-default_cfgs = {
-    # GPU-Efficient (ResNet) weights
-    'gernet_s': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-ger-weights/gernet_s-756b4751.pth'),
-    'gernet_m': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-ger-weights/gernet_m-0873c53a.pth'),
-    'gernet_l': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-ger-weights/gernet_l-f31e2e8d.pth',
-        input_size=(3, 256, 256), pool_size=(8, 8)),
-
-    # RepVGG weights
-    'repvgg_a2': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_a2-c1ee6d2b.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-    'repvgg_b0': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_b0-80ac3f1b.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-    'repvgg_b1': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_b1-77ca2989.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-    'repvgg_b1g4': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_b1g4-abde5d92.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-    'repvgg_b2': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_b2-25b7494e.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-    'repvgg_b2g4': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_b2g4-165a85f2.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-    'repvgg_b3': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_b3-199bc50d.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-    'repvgg_b3g4': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-repvgg-weights/repvgg_b3g4-73c370bf.pth',
-        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv')),
-
-    # experimental configs
-    'resnet51q': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/resnet51q_ra2-d47dcc76.pth',
-        first_conv='stem.conv1', input_size=(3, 256, 256), pool_size=(8, 8),
-        test_input_size=(3, 288, 288), crop_pct=1.0),
-    'resnet61q': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/resnet61q_ra2-6afc536c.pth',
-        test_input_size=(3, 288, 288), crop_pct=1.0),
-
-    'resnext26ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/resnext26ts_256_ra2-8bbd9106.pth'),
-    'gcresnext26ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnext26ts_256-e414378b.pth'),
-    'seresnext26ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/seresnext26ts_256-6f0d74a3.pth'),
-    'eca_resnext26ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/eca_resnext26ts_256-5a1d030f.pth'),
-    'bat_resnext26ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/bat_resnext26ts_256-fa6fd595.pth',
-        min_input_size=(3, 256, 256)),
-
-    'resnet32ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/resnet32ts_256-aacf5250.pth'),
-    'resnet33ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/resnet33ts_256-e91b09a4.pth'),
-    'gcresnet33ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnet33ts_256-0e0cd345.pth'),
-    'seresnet33ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/seresnet33ts_256-f8ad44d9.pth'),
-    'eca_resnet33ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/eca_resnet33ts_256-8f98face.pth'),
-
-    'gcresnet50t': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnet50t_256-96374d1c.pth'),
-
-    'gcresnext50ts': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnext50ts_256-3e0f515e.pth'),
-
-    # experimental models, likely to change ot be removed
-    'regnetz_b16': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_b_raa-677d9606.pth',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
-        input_size=(3, 224, 224), pool_size=(7, 7), test_input_size=(3, 288, 288), first_conv='stem.conv', crop_pct=0.94),
-    'regnetz_c16': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_c_rab2_256-a54bf36a.pth',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), test_input_size=(3, 320, 320), first_conv='stem.conv', crop_pct=0.94),
-    'regnetz_d32': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_d_rab_256-b8073a89.pth',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), test_input_size=(3, 320, 320), crop_pct=0.95),
-    'regnetz_d8': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_d8_bh-afc03c55.pth',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), test_input_size=(3, 320, 320), crop_pct=1.0),
-    'regnetz_e8': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_e8_bh-aace8e6e.pth',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), test_input_size=(3, 320, 320), crop_pct=1.0),
-
-    'regnetz_b16_evos': _cfgr(
-        url='',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
-        input_size=(3, 224, 224), pool_size=(7, 7), test_input_size=(3, 288, 288), first_conv='stem.conv',
-        crop_pct=0.94),
-    'regnetz_c16_evos': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-tpu-weights/regnetz_c16_evos_ch-d8311942.pth',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), test_input_size=(3, 320, 320), first_conv='stem.conv', crop_pct=0.95),
-    'regnetz_d8_evos': _cfgr(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-tpu-weights/regnetz_d8_evos_ch-2bc12646.pth',
-        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), test_input_size=(3, 320, 320), crop_pct=0.95),
-}
 
 
 @dataclass
@@ -238,671 +112,6 @@ def interleave_blocks(
     return tuple(blocks)
 
 
-model_cfgs = dict(
-    gernet_l=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='bottle', d=6, c=640, s=2, gs=0, br=1 / 4),
-            ByoBlockCfg(type='bottle', d=5, c=640, s=2, gs=1, br=3.),
-            ByoBlockCfg(type='bottle', d=4, c=640, s=1, gs=1, br=3.),
-        ),
-        stem_chs=32,
-        stem_pool=None,
-        num_features=2560,
-    ),
-    gernet_m=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='bottle', d=6, c=640, s=2, gs=0, br=1 / 4),
-            ByoBlockCfg(type='bottle', d=4, c=640, s=2, gs=1, br=3.),
-            ByoBlockCfg(type='bottle', d=1, c=640, s=1, gs=1, br=3.),
-        ),
-        stem_chs=32,
-        stem_pool=None,
-        num_features=2560,
-    ),
-    gernet_s=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='basic', d=1, c=48, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='basic', d=3, c=48, s=2, gs=0, br=1.),
-            ByoBlockCfg(type='bottle', d=7, c=384, s=2, gs=0, br=1 / 4),
-            ByoBlockCfg(type='bottle', d=2, c=560, s=2, gs=1, br=3.),
-            ByoBlockCfg(type='bottle', d=1, c=256, s=1, gs=1, br=3.),
-        ),
-        stem_chs=13,
-        stem_pool=None,
-        num_features=1920,
-    ),
-
-    repvgg_a2=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(d=(2, 4, 14, 1), wf=(1.5, 1.5, 1.5, 2.75)),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-    repvgg_b0=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(1., 1., 1., 2.5)),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-    repvgg_b1=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2., 2., 2., 4.)),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-    repvgg_b1g4=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2., 2., 2., 4.), groups=4),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-    repvgg_b2=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.)),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-    repvgg_b2g4=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.), groups=4),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-    repvgg_b3=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(3., 3., 3., 5.)),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-    repvgg_b3g4=ByoModelCfg(
-        blocks=_rep_vgg_bcfg(wf=(3., 3., 3., 5.), groups=4),
-        stem_type='rep',
-        stem_chs=64,
-    ),
-
-    # 4 x conv stem w/ 2 act, no maxpool, 2,4,6,4 repeats, group size 32 in first 3 blocks
-    # DW convs in last block, 2048 pre-FC, silu act  
-    resnet51q=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=4, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=6, c=1536, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=4, c=1536, s=2, gs=1, br=1.0),
-        ),
-        stem_chs=128,
-        stem_type='quad2',
-        stem_pool=None,
-        num_features=2048,
-        act_layer='silu',
-    ),
-
-    # 4 x conv stem w/ 4 act, no maxpool, 1,4,6,4 repeats, edge block first, group size 32 in next 2 blocks
-    # DW convs in last block, 4 conv for each bottle block, 2048 pre-FC, silu act  
-    resnet61q=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='edge', d=1, c=256, s=1, gs=0, br=1.0, block_kwargs=dict()),
-            ByoBlockCfg(type='bottle', d=4, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=6, c=1536, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=4, c=1536, s=2, gs=1, br=1.0),
-        ),
-        stem_chs=128,
-        stem_type='quad',
-        stem_pool=None,
-        num_features=2048,
-        act_layer='silu',
-        block_kwargs=dict(extra_conv=True),
-    ),
-
-    # A series of ResNeXt-26 models w/ one of none, GC, SE, ECA, BAT attn, group size 32, SiLU act,
-    # and a tiered stem w/ maxpool
-    resnext26ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='maxpool',
-        act_layer='silu',
-    ),
-    gcresnext26ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='maxpool',
-        act_layer='silu',
-        attn_layer='gca',
-    ),
-    seresnext26ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='maxpool',
-        act_layer='silu',
-        attn_layer='se',
-    ),
-    eca_resnext26ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='maxpool',
-        act_layer='silu',
-        attn_layer='eca',
-    ),
-    bat_resnext26ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='maxpool',
-        act_layer='silu',
-        attn_layer='bat',
-        attn_kwargs=dict(block_size=8)
-    ),
-
-    # ResNet-32 (2, 3, 3, 2) models w/ no attn, no groups, SiLU act, no pre-fc feat layer, tiered stem w/o maxpool
-    resnet32ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        num_features=0,
-        act_layer='silu',
-    ),
-
-    # ResNet-33 (2, 3, 3, 2) models w/ no attn, no groups, SiLU act, 1280 pre-FC feat, tiered stem w/o maxpool
-    resnet33ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        num_features=1280,
-        act_layer='silu',
-    ),
-
-    # A series of ResNet-33 (2, 3, 3, 2) models w/ one of GC, SE, ECA attn, no groups, SiLU act, 1280 pre-FC feat 
-    # and a tiered stem w/ no maxpool
-    gcresnet33ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        num_features=1280,
-        act_layer='silu',
-        attn_layer='gca',
-    ),
-    seresnet33ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        num_features=1280,
-        act_layer='silu',
-        attn_layer='se',
-    ),
-    eca_resnet33ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
-            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        num_features=1280,
-        act_layer='silu',
-        attn_layer='eca',
-    ),
-
-    gcresnet50t=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=3, c=256, s=1, br=0.25),
-            ByoBlockCfg(type='bottle', d=4, c=512, s=2, br=0.25),
-            ByoBlockCfg(type='bottle', d=6, c=1024, s=2, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=2048, s=2, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        attn_layer='gca',
-    ),
-
-    gcresnext50ts=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=4, c=512, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=6, c=1024, s=2, gs=32, br=0.25),
-            ByoBlockCfg(type='bottle', d=3, c=2048, s=2, gs=32, br=0.25),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='maxpool',
-        # stem_pool=None,
-        act_layer='silu',
-        attn_layer='gca',
-    ),
-
-    # experimental models, closer to a RegNetZ than a ResNet. Similar to EfficientNets but w/ groups instead of DW
-    regnetz_b16=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=3),
-            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=3),
-            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=3),
-            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=3),
-        ),
-        stem_chs=32,
-        stem_pool='',
-        downsample='',
-        num_features=1536,
-        act_layer='silu',
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-    regnetz_c16=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=4),
-            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=4),
-            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=4),
-            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=4),
-        ),
-        stem_chs=32,
-        stem_pool='',
-        downsample='',
-        num_features=1536,
-        act_layer='silu',
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-    regnetz_d32=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=3, c=64, s=1, gs=32, br=4),
-            ByoBlockCfg(type='bottle', d=6, c=128, s=2, gs=32, br=4),
-            ByoBlockCfg(type='bottle', d=12, c=256, s=2, gs=32, br=4),
-            ByoBlockCfg(type='bottle', d=3, c=384, s=2, gs=32, br=4),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        downsample='',
-        num_features=1792,
-        act_layer='silu',
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-    regnetz_d8=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=3, c=64, s=1, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=6, c=128, s=2, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=12, c=256, s=2, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=3, c=384, s=2, gs=8, br=4),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        downsample='',
-        num_features=1792,
-        act_layer='silu',
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-    regnetz_e8=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=3, c=96, s=1, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=8, c=192, s=2, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=16, c=384, s=2, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=8, br=4),
-        ),
-        stem_chs=64,
-        stem_type='tiered',
-        stem_pool='',
-        downsample='',
-        num_features=2048,
-        act_layer='silu',
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-
-    # experimental EvoNorm configs
-    regnetz_b16_evos=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=3),
-            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=3),
-            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=3),
-            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=3),
-        ),
-        stem_chs=32,
-        stem_pool='',
-        downsample='',
-        num_features=1536,
-        act_layer='silu',
-        norm_layer=partial(EvoNorm2dS0a, group_size=16),
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-    regnetz_c16_evos=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=4),
-            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=4),
-            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=4),
-            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=4),
-        ),
-        stem_chs=32,
-        stem_pool='',
-        downsample='',
-        num_features=1536,
-        act_layer='silu',
-        norm_layer=partial(EvoNorm2dS0a, group_size=16),
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-    regnetz_d8_evos=ByoModelCfg(
-        blocks=(
-            ByoBlockCfg(type='bottle', d=3, c=64, s=1, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=6, c=128, s=2, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=12, c=256, s=2, gs=8, br=4),
-            ByoBlockCfg(type='bottle', d=3, c=384, s=2, gs=8, br=4),
-        ),
-        stem_chs=64,
-        stem_type='deep',
-        stem_pool='',
-        downsample='',
-        num_features=1792,
-        act_layer='silu',
-        norm_layer=partial(EvoNorm2dS0a, group_size=16),
-        attn_layer='se',
-        attn_kwargs=dict(rd_ratio=0.25),
-        block_kwargs=dict(bottle_in=True, linear_out=True),
-    ),
-)
-
-@register_model
-def gernet_l(pretrained=False, **kwargs):
-    """ GEResNet-Large (GENet-Large from official impl)
-    `Neural Architecture Design for GPU-Efficient Networks` - https://arxiv.org/abs/2006.14090
-    """
-    return _create_byobnet('gernet_l', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def gernet_m(pretrained=False, **kwargs):
-    """ GEResNet-Medium (GENet-Normal from official impl)
-    `Neural Architecture Design for GPU-Efficient Networks` - https://arxiv.org/abs/2006.14090
-    """
-    return _create_byobnet('gernet_m', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def gernet_s(pretrained=False, **kwargs):
-    """ EResNet-Small (GENet-Small from official impl)
-    `Neural Architecture Design for GPU-Efficient Networks` - https://arxiv.org/abs/2006.14090
-    """
-    return _create_byobnet('gernet_s', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_a2(pretrained=False, **kwargs):
-    """ RepVGG-A2
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_a2', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_b0(pretrained=False, **kwargs):
-    """ RepVGG-B0
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_b0', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_b1(pretrained=False, **kwargs):
-    """ RepVGG-B1
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_b1', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_b1g4(pretrained=False, **kwargs):
-    """ RepVGG-B1g4
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_b1g4', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_b2(pretrained=False, **kwargs):
-    """ RepVGG-B2
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_b2', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_b2g4(pretrained=False, **kwargs):
-    """ RepVGG-B2g4
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_b2g4', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_b3(pretrained=False, **kwargs):
-    """ RepVGG-B3
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_b3', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def repvgg_b3g4(pretrained=False, **kwargs):
-    """ RepVGG-B3g4
-    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
-    """
-    return _create_byobnet('repvgg_b3g4', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def resnet51q(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('resnet51q', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def resnet61q(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('resnet61q', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def resnext26ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('resnext26ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def gcresnext26ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('gcresnext26ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def seresnext26ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('seresnext26ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def eca_resnext26ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('eca_resnext26ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def bat_resnext26ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('bat_resnext26ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def resnet32ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('resnet32ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def resnet33ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('resnet33ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def gcresnet33ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('gcresnet33ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def seresnet33ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('seresnet33ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def eca_resnet33ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('eca_resnet33ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def gcresnet50t(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('gcresnet50t', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def gcresnext50ts(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('gcresnext50ts', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_b16(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_b16', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_c16(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_c16', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_d32(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_d32', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_d8(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_d8', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_e8(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_e8', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_b16_evos(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_b16_evos', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_c16_evos(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_c16_evos', pretrained=pretrained, **kwargs)
-
-
-@register_model
-def regnetz_d8_evos(pretrained=False, **kwargs):
-    """
-    """
-    return _create_byobnet('regnetz_d8_evos', pretrained=pretrained, **kwargs)
-
-
 def expand_blocks_cfg(stage_blocks_cfg: Union[ByoBlockCfg, Sequence[ByoBlockCfg]]) -> List[ByoBlockCfg]:
     if not isinstance(stage_blocks_cfg, Sequence):
         stage_blocks_cfg = (stage_blocks_cfg,)
@@ -931,7 +140,15 @@ class LayerFn:
 
 
 class DownsampleAvg(nn.Module):
-    def __init__(self, in_chs, out_chs, stride=1, dilation=1, apply_act=False, layers: LayerFn = None):
+    def __init__(
+            self,
+            in_chs: int,
+            out_chs: int,
+            stride: int = 1,
+            dilation: int = 1,
+            apply_act: bool = False,
+            layers: LayerFn = None,
+    ):
         """ AvgPool Downsampling as in 'D' ResNet variants."""
         super(DownsampleAvg, self).__init__()
         layers = layers or LayerFn()
@@ -947,7 +164,15 @@ class DownsampleAvg(nn.Module):
         return self.conv(self.pool(x))
 
 
-def create_shortcut(downsample_type, layers: LayerFn, in_chs, out_chs, stride, dilation, **kwargs):
+def create_shortcut(
+        downsample_type: str,
+        in_chs: int,
+        out_chs: int,
+        stride: int,
+        dilation: Tuple[int, int],
+        layers: LayerFn,
+        **kwargs,
+):
     assert downsample_type in ('avg', 'conv1x1', '')
     if in_chs != out_chs or stride != 1 or dilation[0] != dilation[1]:
         if not downsample_type:
@@ -966,19 +191,19 @@ class BasicBlock(nn.Module):
 
     def __init__(
             self,
-            in_chs,
-            out_chs,
-            kernel_size=3,
-            stride=1,
-            dilation=(1, 1),
-            group_size=None,
-            bottle_ratio=1.0,
-            downsample='avg',
-            attn_last=True,
-            linear_out=False,
+            in_chs: int,
+            out_chs: int,
+            kernel_size: int = 3,
+            stride: int = 1,
+            dilation: Tuple[int, int] = (1, 1),
+            group_size: Optional[int] = None,
+            bottle_ratio: float = 1.0,
+            downsample: str = 'avg',
+            attn_last: bool = True,
+            linear_out: bool = False,
             layers: LayerFn = None,
-            drop_block=None,
-            drop_path_rate=0.,
+            drop_block: Callable = None,
+            drop_path_rate: float = 0.,
     ):
         super(BasicBlock, self).__init__()
         layers = layers or LayerFn()
@@ -986,13 +211,16 @@ class BasicBlock(nn.Module):
         groups = num_groups(group_size, mid_chs)
 
         self.shortcut = create_shortcut(
-            downsample, in_chs=in_chs, out_chs=out_chs, stride=stride, dilation=dilation,
-            apply_act=False, layers=layers)
+            downsample, in_chs, out_chs,
+            stride=stride, dilation=dilation, apply_act=False, layers=layers,
+        )
 
         self.conv1_kxk = layers.conv_norm_act(in_chs, mid_chs, kernel_size, stride=stride, dilation=dilation[0])
         self.attn = nn.Identity() if attn_last or layers.attn is None else layers.attn(mid_chs)
         self.conv2_kxk = layers.conv_norm_act(
-            mid_chs, out_chs, kernel_size, dilation=dilation[1], groups=groups, drop_layer=drop_block, apply_act=False)
+            mid_chs, out_chs, kernel_size,
+            dilation=dilation[1], groups=groups, drop_layer=drop_block, apply_act=False,
+        )
         self.attn_last = nn.Identity() if not attn_last or layers.attn is None else layers.attn(out_chs)
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0. else nn.Identity()
         self.act = nn.Identity() if linear_out else layers.act(inplace=True)
@@ -1021,21 +249,21 @@ class BottleneckBlock(nn.Module):
 
     def __init__(
             self,
-            in_chs,
-            out_chs,
-            kernel_size=3,
-            stride=1,
-            dilation=(1, 1),
-            bottle_ratio=1.,
-            group_size=None,
-            downsample='avg',
-            attn_last=False,
-            linear_out=False,
-            extra_conv=False,
-            bottle_in=False,
+            in_chs: int,
+            out_chs: int,
+            kernel_size: int = 3,
+            stride: int = 1,
+            dilation: Tuple[int, int] = (1, 1),
+            bottle_ratio: float = 1.,
+            group_size: Optional[int] = None,
+            downsample: str = 'avg',
+            attn_last: bool = False,
+            linear_out: bool = False,
+            extra_conv: bool = False,
+            bottle_in: bool = False,
             layers: LayerFn = None,
-            drop_block=None,
-            drop_path_rate=0.,
+            drop_block: Callable = None,
+            drop_path_rate: float = 0.,
     ):
         super(BottleneckBlock, self).__init__()
         layers = layers or LayerFn()
@@ -1043,14 +271,18 @@ class BottleneckBlock(nn.Module):
         groups = num_groups(group_size, mid_chs)
 
         self.shortcut = create_shortcut(
-            downsample, in_chs=in_chs, out_chs=out_chs, stride=stride, dilation=dilation,
-            apply_act=False, layers=layers)
+            downsample, in_chs, out_chs,
+            stride=stride, dilation=dilation, apply_act=False, layers=layers,
+        )
 
         self.conv1_1x1 = layers.conv_norm_act(in_chs, mid_chs, 1)
         self.conv2_kxk = layers.conv_norm_act(
-            mid_chs, mid_chs, kernel_size, stride=stride, dilation=dilation[0], groups=groups, drop_layer=drop_block)
+            mid_chs, mid_chs, kernel_size,
+            stride=stride, dilation=dilation[0], groups=groups, drop_layer=drop_block,
+        )
         if extra_conv:
-            self.conv2b_kxk = layers.conv_norm_act(mid_chs, mid_chs, kernel_size, dilation=dilation[1], groups=groups)
+            self.conv2b_kxk = layers.conv_norm_act(
+                mid_chs, mid_chs, kernel_size, dilation=dilation[1], groups=groups)
         else:
             self.conv2b_kxk = nn.Identity()
         self.attn = nn.Identity() if attn_last or layers.attn is None else layers.attn(mid_chs)
@@ -1093,19 +325,19 @@ class DarkBlock(nn.Module):
 
     def __init__(
             self,
-            in_chs,
-            out_chs,
-            kernel_size=3,
-            stride=1,
-            dilation=(1, 1),
-            bottle_ratio=1.0,
-            group_size=None,
-            downsample='avg',
-            attn_last=True,
-            linear_out=False,
+            in_chs: int,
+            out_chs: int,
+            kernel_size: int = 3,
+            stride: int = 1,
+            dilation: Tuple[int, int] = (1, 1),
+            bottle_ratio: float = 1.0,
+            group_size: Optional[int] = None,
+            downsample: str = 'avg',
+            attn_last: bool = True,
+            linear_out: bool = False,
             layers: LayerFn = None,
-            drop_block=None,
-            drop_path_rate=0.,
+            drop_block: Callable = None,
+            drop_path_rate: float = 0.,
     ):
         super(DarkBlock, self).__init__()
         layers = layers or LayerFn()
@@ -1113,14 +345,16 @@ class DarkBlock(nn.Module):
         groups = num_groups(group_size, mid_chs)
 
         self.shortcut = create_shortcut(
-            downsample, in_chs=in_chs, out_chs=out_chs, stride=stride, dilation=dilation,
-            apply_act=False, layers=layers)
+            downsample, in_chs, out_chs,
+            stride=stride, dilation=dilation, apply_act=False, layers=layers,
+        )
 
         self.conv1_1x1 = layers.conv_norm_act(in_chs, mid_chs, 1)
         self.attn = nn.Identity() if attn_last or layers.attn is None else layers.attn(mid_chs)
         self.conv2_kxk = layers.conv_norm_act(
-            mid_chs, out_chs, kernel_size, stride=stride, dilation=dilation[0],
-            groups=groups, drop_layer=drop_block, apply_act=False)
+            mid_chs, out_chs, kernel_size,
+            stride=stride, dilation=dilation[0], groups=groups, drop_layer=drop_block, apply_act=False,
+        )
         self.attn_last = nn.Identity() if not attn_last or layers.attn is None else layers.attn(out_chs)
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0. else nn.Identity()
         self.act = nn.Identity() if linear_out else layers.act(inplace=True)
@@ -1156,19 +390,19 @@ class EdgeBlock(nn.Module):
 
     def __init__(
             self,
-            in_chs,
-            out_chs,
-            kernel_size=3,
-            stride=1,
-            dilation=(1, 1),
-            bottle_ratio=1.0,
-            group_size=None,
-            downsample='avg',
-            attn_last=False,
-            linear_out=False,
+            in_chs: int,
+            out_chs: int,
+            kernel_size: int = 3,
+            stride: int = 1,
+            dilation: Tuple[int, int] = (1, 1),
+            bottle_ratio: float = 1.0,
+            group_size: Optional[int] = None,
+            downsample: str = 'avg',
+            attn_last: bool = False,
+            linear_out: bool = False,
             layers: LayerFn = None,
-            drop_block=None,
-            drop_path_rate=0.,
+            drop_block: Callable = None,
+            drop_path_rate: float = 0.,
     ):
         super(EdgeBlock, self).__init__()
         layers = layers or LayerFn()
@@ -1176,11 +410,14 @@ class EdgeBlock(nn.Module):
         groups = num_groups(group_size, mid_chs)
 
         self.shortcut = create_shortcut(
-            downsample, in_chs=in_chs, out_chs=out_chs, stride=stride, dilation=dilation,
-            apply_act=False, layers=layers)
+            downsample, in_chs, out_chs,
+            stride=stride, dilation=dilation, apply_act=False, layers=layers,
+        )
 
         self.conv1_kxk = layers.conv_norm_act(
-            in_chs, mid_chs, kernel_size, stride=stride, dilation=dilation[0], groups=groups, drop_layer=drop_block)
+            in_chs, mid_chs, kernel_size,
+            stride=stride, dilation=dilation[0], groups=groups, drop_layer=drop_block,
+        )
         self.attn = nn.Identity() if attn_last or layers.attn is None else layers.attn(mid_chs)
         self.conv2_1x1 = layers.conv_norm_act(mid_chs, out_chs, 1, apply_act=False)
         self.attn_last = nn.Identity() if not attn_last or layers.attn is None else layers.attn(out_chs)
@@ -1216,17 +453,17 @@ class RepVggBlock(nn.Module):
 
     def __init__(
             self,
-            in_chs,
-            out_chs,
-            kernel_size=3,
-            stride=1,
-            dilation=(1, 1),
-            bottle_ratio=1.0,
-            group_size=None,
-            downsample='',
+            in_chs: int,
+            out_chs: int,
+            kernel_size: int = 3,
+            stride: int = 1,
+            dilation: Tuple[int, int] = (1, 1),
+            bottle_ratio: float = 1.0,
+            group_size: Optional[int] = None,
+            downsample: str = '',
             layers: LayerFn = None,
-            drop_block=None,
-            drop_path_rate=0.,
+            drop_block: Callable = None,
+            drop_path_rate: float = 0.,
     ):
         super(RepVggBlock, self).__init__()
         layers = layers or LayerFn()
@@ -1235,8 +472,9 @@ class RepVggBlock(nn.Module):
         use_ident = in_chs == out_chs and stride == 1 and dilation[0] == dilation[1]
         self.identity = layers.norm_act(out_chs, apply_act=False) if use_ident else None
         self.conv_kxk = layers.conv_norm_act(
-            in_chs, out_chs, kernel_size, stride=stride, dilation=dilation[0],
-            groups=groups, drop_layer=drop_block, apply_act=False)
+            in_chs, out_chs, kernel_size,
+            stride=stride, dilation=dilation[0], groups=groups, drop_layer=drop_block, apply_act=False,
+        )
         self.conv_1x1 = layers.conv_norm_act(in_chs, out_chs, 1, stride=stride, groups=groups, apply_act=False)
         self.attn = nn.Identity() if layers.attn is None else layers.attn(out_chs)
         self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0. and use_ident else nn.Identity()
@@ -1269,22 +507,22 @@ class SelfAttnBlock(nn.Module):
 
     def __init__(
             self,
-            in_chs,
-            out_chs,
-            kernel_size=3,
-            stride=1,
-            dilation=(1, 1),
-            bottle_ratio=1.,
-            group_size=None,
-            downsample='avg',
-            extra_conv=False,
-            linear_out=False,
-            bottle_in=False,
-            post_attn_na=True,
-            feat_size=None,
+            in_chs: int,
+            out_chs: int,
+            kernel_size: int = 3,
+            stride: int = 1,
+            dilation: Tuple[int, int] = (1, 1),
+            bottle_ratio: float = 1.,
+            group_size: Optional[int] = None,
+            downsample: str = 'avg',
+            extra_conv: bool = False,
+            linear_out: bool = False,
+            bottle_in: bool = False,
+            post_attn_na: bool = True,
+            feat_size: Optional[Tuple[int, int]] = None,
             layers: LayerFn = None,
-            drop_block=None,
-            drop_path_rate=0.,
+            drop_block: Callable = None,
+            drop_path_rate: float = 0.,
     ):
         super(SelfAttnBlock, self).__init__()
         assert layers is not None
@@ -1292,14 +530,16 @@ class SelfAttnBlock(nn.Module):
         groups = num_groups(group_size, mid_chs)
 
         self.shortcut = create_shortcut(
-            downsample, in_chs=in_chs, out_chs=out_chs, stride=stride, dilation=dilation,
-            apply_act=False, layers=layers)
+            downsample, in_chs, out_chs,
+            stride=stride, dilation=dilation, apply_act=False, layers=layers,
+        )
 
         self.conv1_1x1 = layers.conv_norm_act(in_chs, mid_chs, 1)
         if extra_conv:
             self.conv2_kxk = layers.conv_norm_act(
-                mid_chs, mid_chs, kernel_size, stride=stride, dilation=dilation[0],
-                groups=groups, drop_layer=drop_block)
+                mid_chs, mid_chs, kernel_size,
+                stride=stride, dilation=dilation[0], groups=groups, drop_layer=drop_block,
+            )
             stride = 1  # striding done via conv if enabled
         else:
             self.conv2_kxk = nn.Identity()
@@ -1329,6 +569,7 @@ class SelfAttnBlock(nn.Module):
             x = x + self.shortcut(shortcut)
         return self.act(x)
 
+
 _block_registry = dict(
     basic=BasicBlock,
     bottle=BottleneckBlock,
@@ -1354,14 +595,14 @@ class Stem(nn.Sequential):
 
     def __init__(
             self,
-            in_chs,
-            out_chs,
-            kernel_size=3,
-            stride=4,
-            pool='maxpool',
-            num_rep=3,
-            num_act=None,
-            chs_decay=0.5,
+            in_chs: int,
+            out_chs: int,
+            kernel_size: int = 3,
+            stride: int = 4,
+            pool: str = 'maxpool',
+            num_rep: int = 3,
+            num_act: Optional[int] = None,
+            chs_decay: float = 0.5,
             layers: LayerFn = None,
     ):
         super().__init__()
@@ -1408,11 +649,11 @@ class Stem(nn.Sequential):
 
 
 def create_byob_stem(
-        in_chs,
-        out_chs,
-        stem_type='',
-        pool_type='',
-        feat_prefix='stem',
+        in_chs: int,
+        out_chs: int,
+        stem_type: str = '',
+        pool_type: str = '',
+        feat_prefix: str = 'stem',
         layers: LayerFn = None,
 ):
     layers = layers or LayerFn()
@@ -1586,29 +827,28 @@ class ByobNet(nn.Module):
     def __init__(
             self,
             cfg: ByoModelCfg,
-            num_classes=1000,
-            in_chans=3,
-            global_pool='avg',
-            output_stride=32,
-            img_size=None,
-            drop_rate=0.,
-            drop_path_rate=0.,
-            zero_init_last=True,
+            num_classes: int = 1000,
+            in_chans: int = 3,
+            global_pool: str = 'avg',
+            output_stride: int = 32,
+            img_size: Optional[Union[int, Tuple[int, int]]] = None,
+            drop_rate: float = 0.,
+            drop_path_rate: float =0.,
+            zero_init_last: bool = True,
             **kwargs,
     ):
         """
-
         Args:
-            cfg (ByoModelCfg): Model architecture configuration
-            num_classes (int): Number of classifier classes (default: 1000)
-            in_chans (int): Number of input channels (default: 3)
-            global_pool (str): Global pooling type (default: 'avg')
-            output_stride (int): Output stride of network, one of (8, 16, 32) (default: 32)
-            img_size (Union[int, Tuple[int]): Image size for fixed image size models (i.e. self-attn)
-            drop_rate (float): Dropout rate (default: 0.)
-            drop_path_rate (float): Stochastic depth drop-path rate (default: 0.)
-            zero_init_last (bool): Zero-init last weight of residual path
-            kwargs (dict): Extra kwargs overlayed onto cfg
+            cfg: Model architecture configuration.
+            num_classes: Number of classifier classes.
+            in_chans: Number of input channels.
+            global_pool: Global pooling type.
+            output_stride: Output stride of network, one of (8, 16, 32).
+            img_size: Image size for fixed image size models (i.e. self-attn).
+            drop_rate: Classifier dropout rate.
+            drop_path_rate: Stochastic depth drop-path rate.
+            zero_init_last: Zero-init last weight of residual path.
+            **kwargs: Extra kwargs overlayed onto cfg.
         """
         super().__init__()
         self.num_classes = num_classes
@@ -1628,7 +868,13 @@ class ByobNet(nn.Module):
         feat_size = reduce_feat_size(feat_size, stride=stem_feat[-1]['reduction'])
 
         self.stages, stage_feat = create_byob_stages(
-            cfg, drop_path_rate, output_stride, stem_feat[-1], layers=layers, feat_size=feat_size)
+            cfg,
+            drop_path_rate,
+            output_stride,
+            stem_feat[-1],
+            layers=layers,
+            feat_size=feat_size,
+        )
         self.feature_info.extend(stage_feat[:-1])
 
         prev_chs = stage_feat[-1]['num_chs']
@@ -1641,7 +887,12 @@ class ByobNet(nn.Module):
         self.feature_info += [
             dict(num_chs=self.num_features, reduction=stage_feat[-1]['reduction'], module='final_conv')]
 
-        self.head = ClassifierHead(self.num_features, num_classes, pool_type=global_pool, drop_rate=self.drop_rate)
+        self.head = ClassifierHead(
+            self.num_features,
+            num_classes,
+            pool_type=global_pool,
+            drop_rate=self.drop_rate,
+        )
 
         # init weights
         named_apply(partial(_init_weights, zero_init_last=zero_init_last), self)
@@ -1666,7 +917,7 @@ class ByobNet(nn.Module):
         return self.head.fc
 
     def reset_classifier(self, num_classes, global_pool='avg'):
-        self.head = ClassifierHead(self.num_features, num_classes, pool_type=global_pool, drop_rate=self.drop_rate)
+        self.head.reset(num_classes, global_pool)
 
     def forward_features(self, x):
         x = self.stem(x)
@@ -1704,9 +955,830 @@ def _init_weights(module, name='', zero_init_last=False):
         module.init_weights(zero_init_last=zero_init_last)
 
 
+model_cfgs = dict(
+    gernet_l=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='bottle', d=6, c=640, s=2, gs=0, br=1 / 4),
+            ByoBlockCfg(type='bottle', d=5, c=640, s=2, gs=1, br=3.),
+            ByoBlockCfg(type='bottle', d=4, c=640, s=1, gs=1, br=3.),
+        ),
+        stem_chs=32,
+        stem_pool=None,
+        num_features=2560,
+    ),
+    gernet_m=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='basic', d=1, c=128, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='basic', d=2, c=192, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='bottle', d=6, c=640, s=2, gs=0, br=1 / 4),
+            ByoBlockCfg(type='bottle', d=4, c=640, s=2, gs=1, br=3.),
+            ByoBlockCfg(type='bottle', d=1, c=640, s=1, gs=1, br=3.),
+        ),
+        stem_chs=32,
+        stem_pool=None,
+        num_features=2560,
+    ),
+    gernet_s=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='basic', d=1, c=48, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='basic', d=3, c=48, s=2, gs=0, br=1.),
+            ByoBlockCfg(type='bottle', d=7, c=384, s=2, gs=0, br=1 / 4),
+            ByoBlockCfg(type='bottle', d=2, c=560, s=2, gs=1, br=3.),
+            ByoBlockCfg(type='bottle', d=1, c=256, s=1, gs=1, br=3.),
+        ),
+        stem_chs=13,
+        stem_pool=None,
+        num_features=1920,
+    ),
+
+    repvgg_a2=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(d=(2, 4, 14, 1), wf=(1.5, 1.5, 1.5, 2.75)),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+    repvgg_b0=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(wf=(1., 1., 1., 2.5)),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+    repvgg_b1=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(wf=(2., 2., 2., 4.)),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+    repvgg_b1g4=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(wf=(2., 2., 2., 4.), groups=4),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+    repvgg_b2=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.)),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+    repvgg_b2g4=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(wf=(2.5, 2.5, 2.5, 5.), groups=4),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+    repvgg_b3=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(wf=(3., 3., 3., 5.)),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+    repvgg_b3g4=ByoModelCfg(
+        blocks=_rep_vgg_bcfg(wf=(3., 3., 3., 5.), groups=4),
+        stem_type='rep',
+        stem_chs=64,
+    ),
+
+    # 4 x conv stem w/ 2 act, no maxpool, 2,4,6,4 repeats, group size 32 in first 3 blocks
+    # DW convs in last block, 2048 pre-FC, silu act
+    resnet51q=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=4, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=6, c=1536, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=4, c=1536, s=2, gs=1, br=1.0),
+        ),
+        stem_chs=128,
+        stem_type='quad2',
+        stem_pool=None,
+        num_features=2048,
+        act_layer='silu',
+    ),
+
+    # 4 x conv stem w/ 4 act, no maxpool, 1,4,6,4 repeats, edge block first, group size 32 in next 2 blocks
+    # DW convs in last block, 4 conv for each bottle block, 2048 pre-FC, silu act
+    resnet61q=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='edge', d=1, c=256, s=1, gs=0, br=1.0, block_kwargs=dict()),
+            ByoBlockCfg(type='bottle', d=4, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=6, c=1536, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=4, c=1536, s=2, gs=1, br=1.0),
+        ),
+        stem_chs=128,
+        stem_type='quad',
+        stem_pool=None,
+        num_features=2048,
+        act_layer='silu',
+        block_kwargs=dict(extra_conv=True),
+    ),
+
+    # A series of ResNeXt-26 models w/ one of none, GC, SE, ECA, BAT attn, group size 32, SiLU act,
+    # and a tiered stem w/ maxpool
+    resnext26ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='maxpool',
+        act_layer='silu',
+    ),
+    gcresnext26ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='maxpool',
+        act_layer='silu',
+        attn_layer='gca',
+    ),
+    seresnext26ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='maxpool',
+        act_layer='silu',
+        attn_layer='se',
+    ),
+    eca_resnext26ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='maxpool',
+        act_layer='silu',
+        attn_layer='eca',
+    ),
+    bat_resnext26ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1024, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=2048, s=2, gs=32, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='maxpool',
+        act_layer='silu',
+        attn_layer='bat',
+        attn_kwargs=dict(block_size=8)
+    ),
+
+    # ResNet-32 (2, 3, 3, 2) models w/ no attn, no groups, SiLU act, no pre-fc feat layer, tiered stem w/o maxpool
+    resnet32ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        num_features=0,
+        act_layer='silu',
+    ),
+
+    # ResNet-33 (2, 3, 3, 2) models w/ no attn, no groups, SiLU act, 1280 pre-FC feat, tiered stem w/o maxpool
+    resnet33ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        num_features=1280,
+        act_layer='silu',
+    ),
+
+    # A series of ResNet-33 (2, 3, 3, 2) models w/ one of GC, SE, ECA attn, no groups, SiLU act, 1280 pre-FC feat
+    # and a tiered stem w/ no maxpool
+    gcresnet33ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        num_features=1280,
+        act_layer='silu',
+        attn_layer='gca',
+    ),
+    seresnet33ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        num_features=1280,
+        act_layer='silu',
+        attn_layer='se',
+    ),
+    eca_resnet33ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=256, s=1, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=1536, s=2, gs=0, br=0.25),
+            ByoBlockCfg(type='bottle', d=2, c=1536, s=2, gs=0, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        num_features=1280,
+        act_layer='silu',
+        attn_layer='eca',
+    ),
+
+    gcresnet50t=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=3, c=256, s=1, br=0.25),
+            ByoBlockCfg(type='bottle', d=4, c=512, s=2, br=0.25),
+            ByoBlockCfg(type='bottle', d=6, c=1024, s=2, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=2048, s=2, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        attn_layer='gca',
+    ),
+
+    gcresnext50ts=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=3, c=256, s=1, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=4, c=512, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=6, c=1024, s=2, gs=32, br=0.25),
+            ByoBlockCfg(type='bottle', d=3, c=2048, s=2, gs=32, br=0.25),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='maxpool',
+        act_layer='silu',
+        attn_layer='gca',
+    ),
+
+    # experimental models, closer to a RegNetZ than a ResNet. Similar to EfficientNets but w/ groups instead of DW
+    regnetz_b16=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=3),
+            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=3),
+            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=3),
+            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=3),
+        ),
+        stem_chs=32,
+        stem_pool='',
+        downsample='',
+        num_features=1536,
+        act_layer='silu',
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+    regnetz_c16=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=4),
+            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=4),
+            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=4),
+            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=4),
+        ),
+        stem_chs=32,
+        stem_pool='',
+        downsample='',
+        num_features=1536,
+        act_layer='silu',
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+    regnetz_d32=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=3, c=64, s=1, gs=32, br=4),
+            ByoBlockCfg(type='bottle', d=6, c=128, s=2, gs=32, br=4),
+            ByoBlockCfg(type='bottle', d=12, c=256, s=2, gs=32, br=4),
+            ByoBlockCfg(type='bottle', d=3, c=384, s=2, gs=32, br=4),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        downsample='',
+        num_features=1792,
+        act_layer='silu',
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+    regnetz_d8=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=3, c=64, s=1, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=6, c=128, s=2, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=12, c=256, s=2, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=3, c=384, s=2, gs=8, br=4),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        downsample='',
+        num_features=1792,
+        act_layer='silu',
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+    regnetz_e8=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=3, c=96, s=1, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=8, c=192, s=2, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=16, c=384, s=2, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=3, c=512, s=2, gs=8, br=4),
+        ),
+        stem_chs=64,
+        stem_type='tiered',
+        stem_pool='',
+        downsample='',
+        num_features=2048,
+        act_layer='silu',
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+
+    # experimental EvoNorm configs
+    regnetz_b16_evos=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=3),
+            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=3),
+            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=3),
+            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=3),
+        ),
+        stem_chs=32,
+        stem_pool='',
+        downsample='',
+        num_features=1536,
+        act_layer='silu',
+        norm_layer=partial(EvoNorm2dS0a, group_size=16),
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+    regnetz_c16_evos=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=2, c=48, s=2, gs=16, br=4),
+            ByoBlockCfg(type='bottle', d=6, c=96, s=2, gs=16, br=4),
+            ByoBlockCfg(type='bottle', d=12, c=192, s=2, gs=16, br=4),
+            ByoBlockCfg(type='bottle', d=2, c=288, s=2, gs=16, br=4),
+        ),
+        stem_chs=32,
+        stem_pool='',
+        downsample='',
+        num_features=1536,
+        act_layer='silu',
+        norm_layer=partial(EvoNorm2dS0a, group_size=16),
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+    regnetz_d8_evos=ByoModelCfg(
+        blocks=(
+            ByoBlockCfg(type='bottle', d=3, c=64, s=1, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=6, c=128, s=2, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=12, c=256, s=2, gs=8, br=4),
+            ByoBlockCfg(type='bottle', d=3, c=384, s=2, gs=8, br=4),
+        ),
+        stem_chs=64,
+        stem_type='deep',
+        stem_pool='',
+        downsample='',
+        num_features=1792,
+        act_layer='silu',
+        norm_layer=partial(EvoNorm2dS0a, group_size=16),
+        attn_layer='se',
+        attn_kwargs=dict(rd_ratio=0.25),
+        block_kwargs=dict(bottle_in=True, linear_out=True),
+    ),
+)
+
+
 def _create_byobnet(variant, pretrained=False, **kwargs):
     return build_model_with_cfg(
         ByobNet, variant, pretrained,
         model_cfg=model_cfgs[variant],
         feature_cfg=dict(flatten_sequential=True),
         **kwargs)
+
+
+def _cfg(url='', **kwargs):
+    return {
+        'url': url, 'num_classes': 1000, 'input_size': (3, 224, 224), 'pool_size': (7, 7),
+        'crop_pct': 0.875, 'interpolation': 'bilinear',
+        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
+        'first_conv': 'stem.conv', 'classifier': 'head.fc',
+        **kwargs
+    }
+
+
+def _cfgr(url='', **kwargs):
+    return {
+        'url': url, 'num_classes': 1000, 'input_size': (3, 256, 256), 'pool_size': (8, 8),
+        'crop_pct': 0.9, 'interpolation': 'bicubic',
+        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
+        'first_conv': 'stem.conv1.conv', 'classifier': 'head.fc',
+        **kwargs
+    }
+
+
+default_cfgs = generate_default_cfgs({
+    # GPU-Efficient (ResNet) weights
+    'gernet_s.idstcv_in1k': _cfg(hf_hub_id='timm/'),
+    'gernet_m.idstcv_in1k': _cfg(hf_hub_id='timm/'),
+    'gernet_l.idstcv_in1k': _cfg(hf_hub_id='timm/', input_size=(3, 256, 256), pool_size=(8, 8)),
+
+    # RepVGG weights
+    'repvgg_a2.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+    'repvgg_b0.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+    'repvgg_b1.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+    'repvgg_b1g4.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+    'repvgg_b2.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+    'repvgg_b2g4.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+    'repvgg_b3.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+    'repvgg_b3g4.rvgg_in1k': _cfg(
+        hf_hub_id='timm/',
+        first_conv=('stem.conv_kxk.conv', 'stem.conv_1x1.conv'), license='mit'),
+
+    # experimental ResNet configs
+    'resnet51q.ra2_in1k': _cfg(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/resnet51q_ra2-d47dcc76.pth',
+        first_conv='stem.conv1', input_size=(3, 256, 256), pool_size=(8, 8),
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'resnet61q.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/resnet61q_ra2-6afc536c.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+
+    # ResNeXt-26 models with different attention in Bottleneck blocks
+    'resnext26ts.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/resnext26ts_256_ra2-8bbd9106.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'seresnext26ts.ch_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/seresnext26ts_256-6f0d74a3.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'gcresnext26ts.ch_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnext26ts_256-e414378b.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'eca_resnext26ts.ch_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/eca_resnext26ts_256-5a1d030f.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'bat_resnext26ts.ch_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/bat_resnext26ts_256-fa6fd595.pth',
+        min_input_size=(3, 256, 256)),
+
+    # ResNet-32 / 33 models with different attention in Bottleneck blocks
+    'resnet32ts.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/resnet32ts_256-aacf5250.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'resnet33ts.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/resnet33ts_256-e91b09a4.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'gcresnet33ts.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnet33ts_256-0e0cd345.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'seresnet33ts.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/seresnet33ts_256-f8ad44d9.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'eca_resnet33ts.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/eca_resnet33ts_256-8f98face.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+
+    'gcresnet50t.ra2_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnet50t_256-96374d1c.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+
+    'gcresnext50ts.ch_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/gcresnext50ts_256-3e0f515e.pth',
+        test_input_size=(3, 288, 288), test_crop_pct=1.0),
+
+    # custom `timm` specific RegNetZ inspired models w/ different sizing from paper
+    'regnetz_b16.ra3_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_b_raa-677d9606.pth',
+        first_conv='stem.conv', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
+        input_size=(3, 224, 224), pool_size=(7, 7), crop_pct=0.94, test_input_size=(3, 288, 288), test_crop_pct=1.0),
+    'regnetz_c16.ra3_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_c_rab2_256-a54bf36a.pth',
+        first_conv='stem.conv', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
+        crop_pct=0.94, test_input_size=(3, 320, 320), test_crop_pct=1.0),
+    'regnetz_d32.ra3_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_d_rab_256-b8073a89.pth',
+        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=0.95, test_input_size=(3, 320, 320)),
+    'regnetz_d8.ra3_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_d8_bh-afc03c55.pth',
+        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=0.94, test_input_size=(3, 320, 320), test_crop_pct=1.0),
+    'regnetz_e8.ra3_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-attn-weights/regnetz_e8_bh-aace8e6e.pth',
+        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=0.94, test_input_size=(3, 320, 320), test_crop_pct=1.0),
+
+    'regnetz_b16_evos.untrained': _cfgr(
+        first_conv='stem.conv', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
+        input_size=(3, 224, 224), pool_size=(7, 7), crop_pct=0.95, test_input_size=(3, 288, 288)),
+    'regnetz_c16_evos.ch_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-tpu-weights/regnetz_c16_evos_ch-d8311942.pth',
+        first_conv='stem.conv', mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
+        crop_pct=0.95, test_input_size=(3, 320, 320)),
+    'regnetz_d8_evos.ch_in1k': _cfgr(
+        hf_hub_id='timm/',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-tpu-weights/regnetz_d8_evos_ch-2bc12646.pth',
+        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=0.95, test_input_size=(3, 320, 320), test_crop_pct=1.0),
+})
+
+
+@register_model
+def gernet_l(pretrained=False, **kwargs) -> ByobNet:
+    """ GEResNet-Large (GENet-Large from official impl)
+    `Neural Architecture Design for GPU-Efficient Networks` - https://arxiv.org/abs/2006.14090
+    """
+    return _create_byobnet('gernet_l', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def gernet_m(pretrained=False, **kwargs) -> ByobNet:
+    """ GEResNet-Medium (GENet-Normal from official impl)
+    `Neural Architecture Design for GPU-Efficient Networks` - https://arxiv.org/abs/2006.14090
+    """
+    return _create_byobnet('gernet_m', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def gernet_s(pretrained=False, **kwargs) -> ByobNet:
+    """ EResNet-Small (GENet-Small from official impl)
+    `Neural Architecture Design for GPU-Efficient Networks` - https://arxiv.org/abs/2006.14090
+    """
+    return _create_byobnet('gernet_s', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_a2(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-A2
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_a2', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_b0(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-B0
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_b0', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_b1(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-B1
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_b1', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_b1g4(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-B1g4
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_b1g4', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_b2(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-B2
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_b2', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_b2g4(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-B2g4
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_b2g4', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_b3(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-B3
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_b3', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def repvgg_b3g4(pretrained=False, **kwargs) -> ByobNet:
+    """ RepVGG-B3g4
+    `Making VGG-style ConvNets Great Again` - https://arxiv.org/abs/2101.03697
+    """
+    return _create_byobnet('repvgg_b3g4', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def resnet51q(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('resnet51q', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def resnet61q(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('resnet61q', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def resnext26ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('resnext26ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def gcresnext26ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('gcresnext26ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def seresnext26ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('seresnext26ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def eca_resnext26ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('eca_resnext26ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def bat_resnext26ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('bat_resnext26ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def resnet32ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('resnet32ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def resnet33ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('resnet33ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def gcresnet33ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('gcresnet33ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def seresnet33ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('seresnet33ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def eca_resnet33ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('eca_resnet33ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def gcresnet50t(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('gcresnet50t', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def gcresnext50ts(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('gcresnext50ts', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_b16(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_b16', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_c16(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_c16', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_d32(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_d32', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_d8(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_d8', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_e8(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_e8', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_b16_evos(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_b16_evos', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_c16_evos(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_c16_evos', pretrained=pretrained, **kwargs)
+
+
+@register_model
+def regnetz_d8_evos(pretrained=False, **kwargs) -> ByobNet:
+    """
+    """
+    return _create_byobnet('regnetz_d8_evos', pretrained=pretrained, **kwargs)
